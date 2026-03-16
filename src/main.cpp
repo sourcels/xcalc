@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "M5Cardputer.h"
 #include <utility/Keyboard/KeyboardReader/TCA8418.h>
-#include "logic.h"
+#include "app_logic.h"
 #include "ui.h"
 
 TaskHandle_t handleUITask = NULL;
@@ -17,7 +17,7 @@ void setup() {
     cfg.internal_spk = false;
 
     M5Cardputer.begin(cfg, true);
-    Serial.println("Configuring TCA8418 keyboard driver");
+    //Serial.println("Configuring TCA8418 keyboard driver");
     std::unique_ptr<KeyboardReader> reader(new TCA8418KeyboardReader());
     M5Cardputer.Keyboard.begin(std::move(reader));
 

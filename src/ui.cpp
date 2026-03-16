@@ -1,12 +1,13 @@
 #include "ui.h"
-#include "logic.h"
+#include "app_logic.h"
 
 UIState currentState = STATE_MENU;
 String func1 = "";
 String func2 = "";
 String funcTemp = "";
-String punktProbeInput = "";
+
 String punktProbeResult = "";
+uint16_t punktProbeColor = TFT_WHITE;
 
 const char* menuItemsAll[] = {
     "1. f(x) definieren",
@@ -89,6 +90,7 @@ void drawInput(const char* title, const char* prefix, String currentInput) {
 }
 
 void drawResultsAchsen() {
+    sprite.setTextDatum(TL_DATUM);
     sprite.fillSprite(COLOR_BG);
     int yStart = 25;
     int curY = yStart - resultScrollY;
@@ -122,8 +124,17 @@ void drawResultsAchsen() {
                     prefix += String(i + 1);
                 }
                 
-                sprintf(buf, "%s(%.2f | %.2f)", prefix.c_str(), roots[i].x, isIntersect ? roots[i].y : 0.0);
-                sprite.drawString(buf, 20, curY); curY += 12;
+                String xStr = String(roots[i].x, 4);
+                String yStr = String(isIntersect ? roots[i].y : 0.0, 4);
+
+                while(xStr.endsWith("0") && xStr.indexOf('.') != -1) xStr.remove(xStr.length()-1);
+                if(xStr.endsWith(".")) xStr.remove(xStr.length()-1);
+                while(yStr.endsWith("0") && yStr.indexOf('.') != -1) yStr.remove(yStr.length()-1);
+                if(yStr.endsWith(".")) yStr.remove(yStr.length()-1);
+
+                String resLine = prefix + "(" + xStr + " | " + yStr + ")";
+                sprite.drawString(resLine, 20, curY); 
+                curY += 12;
             }
         }
         curY += 10;
@@ -152,6 +163,20 @@ void drawResultsAchsen() {
     sprite.drawString(";/. : Scroll | ESC: Zurueck", 10, sprite.height() - 15);
 }
 
+void drawPunktProbe() {
+    drawInput("Punktprobe (x,y)", "P = ", funcTemp);
+
+    sprite.setTextColor(COLOR_GRAY, COLOR_BG);
+    sprite.setTextDatum(TL_DATUM);
+    sprite.drawString("Tipp: Nutze Leerzeichen (z.B. '2 4')", 10, 60);
+
+    if (punktProbeResult != "") {
+        sprite.setTextColor(punktProbeColor, COLOR_BG);
+        sprite.setTextDatum(MC_DATUM);
+        sprite.drawString(punktProbeResult, sprite.width() / 2, 95);
+    }
+}
+
 void draw() {
     sprite.fillSprite(COLOR_BG);
 
@@ -159,6 +184,7 @@ void draw() {
     else if (currentState == STATE_INPUT_F1) drawInput("f(x) definieren", "f(x) = ", funcTemp);
     else if (currentState == STATE_INPUT_F2) drawInput("g(x) definieren", "g(x) = ", funcTemp);
     else if (currentState == STATE_RESULTS_ACHSEN) drawResultsAchsen();
+    else if (currentState == STATE_INPUT_PUNKTPROBE) drawPunktProbe();
 
     if (mathBusy) {
         int bw = 160, bh = 50;
@@ -240,30 +266,47 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
     }
     else if (currentState == STATE_INPUT_PUNKTPROBE) {
         if (ks.enter) {
-            int commaPos = funcTemp.indexOf(',');
-            if (commaPos != -1) {
-                double px = funcTemp.substring(0, commaPos).toDouble();
-                double py = funcTemp.substring(commaPos + 1).toDouble();
+            int sepPos = funcTemp.indexOf(',');
+            if (sepPos == -1) sepPos = funcTemp.indexOf(' '); 
+
+            if (sepPos != -1 && expr1.valid) {
+                double px = funcTemp.substring(0, sepPos).toDouble();
+                double py = funcTemp.substring(sepPos + 1).toDouble();
                 
                 double fVal = expr1.evaluate(px);
-                if (abs(fVal - py) < 0.1) punktProbeResult = "Punkt liegt auf f(x)";
-                else punktProbeResult = "Liegt NICHT auf f(x)";
+
+                if (abs(fVal - py) < 0.01) {
+                    punktProbeResult = "Der Punkt liegt auf dem Graphen";
+                    punktProbeColor = COLOR_RED;
+                } else {
+                    punktProbeResult = "Der Punkt liegt nicht auf dem Graphen";
+                    punktProbeColor = COLOR_GREEN;
+                }
 
                 if (expr2.valid) {
                     double gVal = expr2.evaluate(px);
-                    if (abs(gVal - py) < 0.1) punktProbeResult += " & g(x)";
+                    bool onG = abs(gVal - py) < 0.01;
+                    if (abs(fVal - py) < 0.01 && onG) {
+                        punktProbeResult = "Liegt auf f(x) UND g(x)";
+                        punktProbeColor = COLOR_RED;
+                    }
                 }
+            } else if (!expr1.valid) {
+                punktProbeResult = "Bitte zuerst f(x) definieren!";
+                punktProbeColor = COLOR_YELLOW;
             } else {
-                punktProbeResult = "Format: x,y nutzen!";
+                punktProbeResult = "Format: 'X Y' oder 'X,Y' nutzen!";
+                punktProbeColor = COLOR_YELLOW;
             }
             needRedraw = true;
-        } else if (ch == 27 || ks.del && funcTemp == "") {
+        } else if (ch == 27 || (ks.del && funcTemp == "")) {
             currentState = STATE_MENU;
             needRedraw = true;
         } else if (ks.del) {
             funcTemp.remove(funcTemp.length() - 1);
             needRedraw = true;
-        } else if (!isSpecial) {
+        } else if (!isSpecial && ch >= 32 && ch <= 126) {
+            if (punktProbeResult != "") punktProbeResult = "";
             funcTemp += ch;
             needRedraw = true;
         }

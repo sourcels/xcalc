@@ -10,10 +10,5 @@ enum UIState {
     STATE_INPUT_PUNKTPROBE
 };
 
-extern volatile bool needRedraw;
 extern UIState currentState;
-extern String func1;
-extern String func2;
-extern String funcTemp;
-
 void Task_TFT(void *pvParameters);
