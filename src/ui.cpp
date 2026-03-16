@@ -26,7 +26,6 @@ int resultScrollY = 0;
 int maxScrollHeight = 0;
 
 static M5Canvas sprite(&M5Cardputer.Display);
-volatile bool needRedraw = true;
 
 static const uint16_t COLOR_BG = TFT_BLACK;
 static const uint16_t COLOR_BORDER = 0x4208;
