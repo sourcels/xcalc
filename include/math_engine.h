@@ -12,6 +12,14 @@ struct MathExpression {
     double evaluate(double x) const;
 };
 
+struct ProbeResult {
+    bool defined = false;
+    bool isOnGraph = false;
+    double diff = 0;
+};
+
+ProbeResult checkPoint(const MathExpression& e, double px, double py);
+
 int getPrecedence(char op);
 double applyOp(double a, double b, char op);
 

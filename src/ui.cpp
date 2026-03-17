@@ -163,16 +163,31 @@ void drawResultsAchsen() {
 }
 
 void drawPunktProbe() {
-    drawInput("Punktprobe (x,y)", "P = ", funcTemp);
+    sprite.fillSprite(COLOR_BG);
+    sprite.drawRect(5, 5, 230, 125, COLOR_BORDER);
+    
+    sprite.setTextColor(COLOR_YELLOW);
+    sprite.setTextDatum(TC_DATUM);
+    sprite.drawString("Punktprobe P(x,y)", 120, 12);
 
-    sprite.setTextColor(COLOR_GRAY, COLOR_BG);
     sprite.setTextDatum(TL_DATUM);
-    sprite.drawString("Tipp: Nutze Leerzeichen (z.B. '2 4')", 10, 60);
+    sprite.setTextColor(COLOR_TEXT);
+    sprite.drawString("Eingabe P = ", 15, 40);
+    sprite.drawString(funcTemp + "_", 90, 40);
 
-    if (punktProbeResult != "") {
-        sprite.setTextColor(punktProbeColor, COLOR_BG);
-        sprite.setTextDatum(MC_DATUM);
-        sprite.drawString(punktProbeResult, sprite.width() / 2, 95);
+    int startY = 70;
+    if (probeFormatError) {
+        sprite.setTextColor(COLOR_RED);
+        sprite.drawString("Fehler: Format 'x y' nutzen!", 15, startY);
+    } else {
+        if (resF1.defined) {
+            sprite.setTextColor(resF1.isOnGraph ? COLOR_GREEN : COLOR_RED);
+            sprite.drawString("f(x): " + String(resF1.isOnGraph ? "Liegt darauf" : "Liegt NICHT darauf"), 15, startY);
+        }
+        if (resF2.defined) {
+            sprite.setTextColor(resF2.isOnGraph ? COLOR_GREEN : COLOR_RED);
+            sprite.drawString("g(x): " + String(resF2.isOnGraph ? "Liegt darauf" : "Liegt NICHT darauf"), 15, startY + 20);
+        }
     }
 }
 
@@ -231,17 +246,17 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
     } 
     else if (currentState == STATE_INPUT_F1 || currentState == STATE_INPUT_F2) {
         if (ks.enter) {
-        if (currentState == STATE_INPUT_F1) {
-            expr1.rawStr = funcTemp;
-            currentMathCmd = CMD_VALIDATE_F1;
-        } else {
-            expr2.rawStr = funcTemp;
-            currentMathCmd = CMD_VALIDATE_F2;
-        }
-        needsRecalc = true;
-        currentState = STATE_MENU;
-        needRedraw = true;
-    } else if (ks.del) {
+            if (currentState == STATE_INPUT_F1) {
+                expr1.rawStr = funcTemp;
+                currentMathCmd = CMD_VALIDATE_F1;
+            } else {
+                expr2.rawStr = funcTemp;
+                currentMathCmd = CMD_VALIDATE_F2;
+            }
+            needsRecalc = true;
+            currentState = STATE_MENU;
+            needRedraw = true;
+        } else if (ks.del) {
             if (funcTemp.length() > 0) { funcTemp.remove(funcTemp.length() - 1); needRedraw = true; }
         } else if (ch == '\t') {
             funcTemp += "^"; needRedraw = true;
@@ -262,50 +277,25 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
             currentState = STATE_MENU;
             needRedraw = true;
         }
-    }
-    else if (currentState == STATE_INPUT_PUNKTPROBE) {
+    } else if (currentState == STATE_INPUT_PUNKTPROBE) {
         if (ks.enter) {
-            int sepPos = funcTemp.indexOf(',');
-            if (sepPos == -1) sepPos = funcTemp.indexOf(' '); 
-
-            if (sepPos != -1 && expr1.valid) {
-                double px = funcTemp.substring(0, sepPos).toDouble();
-                double py = funcTemp.substring(sepPos + 1).toDouble();
-                
-                double fVal = expr1.evaluate(px);
-
-                if (abs(fVal - py) < 0.01) {
-                    punktProbeResult = "Der Punkt liegt auf dem Graphen";
-                    punktProbeColor = COLOR_RED;
-                } else {
-                    punktProbeResult = "Der Punkt liegt nicht auf dem Graphen";
-                    punktProbeColor = COLOR_GREEN;
-                }
-
-                if (expr2.valid) {
-                    double gVal = expr2.evaluate(px);
-                    bool onG = abs(gVal - py) < 0.01;
-                    if (abs(fVal - py) < 0.01 && onG) {
-                        punktProbeResult = "Liegt auf f(x) UND g(x)";
-                        punktProbeColor = COLOR_RED;
-                    }
-                }
-            } else if (!expr1.valid) {
-                punktProbeResult = "Bitte zuerst f(x) definieren!";
-                punktProbeColor = COLOR_YELLOW;
-            } else {
-                punktProbeResult = "Format: 'X Y' oder 'X,Y' nutzen!";
-                punktProbeColor = COLOR_YELLOW;
-            }
+            probeInput = funcTemp;
+            currentMathCmd = CMD_CALC_PUNKTPROBE;
             needRedraw = true;
-        } else if (ch == 27 || (ks.del && funcTemp == "")) {
+        }
+        else if (ch == 27 || ch == '`') { 
             currentState = STATE_MENU;
             needRedraw = true;
-        } else if (ks.del) {
-            funcTemp.remove(funcTemp.length() - 1);
-            needRedraw = true;
-        } else if (!isSpecial && ch >= 32 && ch <= 126) {
-            if (punktProbeResult != "") punktProbeResult = "";
+        }
+        else if (ks.del) {
+            if (funcTemp.length() > 0) {
+                funcTemp.remove(funcTemp.length() - 1);
+                resF1.defined = false; 
+                resF2.defined = false;
+                needRedraw = true;
+            }
+        }
+        else if (!isSpecial && ch >= 32 && ch <= 126) {
             funcTemp += ch;
             needRedraw = true;
         }

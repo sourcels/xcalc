@@ -14,6 +14,36 @@ Point f1_y_int, f2_y_int;
 bool f1_has_y_int = false;
 bool f2_has_y_int = false;
 
+String probeInput = "";
+ProbeResult resF1, resF2;
+bool probeFormatError = false;
+
+void calculatePunktprobe() {
+    mathBusy = true;
+    mathProgress = 0;
+    needRedraw = true;
+
+    probeFormatError = false;
+
+    int sepPos = probeInput.indexOf(',');
+    if (sepPos == -1) sepPos = probeInput.indexOf(' ');
+
+    if (sepPos != -1) {
+        double px = probeInput.substring(0, sepPos).toDouble();
+        double py = probeInput.substring(sepPos + 1).toDouble();
+
+        resF1 = checkPoint(expr1, px, py);
+        mathProgress = 50;
+        resF2 = checkPoint(expr2, px, py);
+        mathProgress = 100;
+    } else {
+        probeFormatError = true;
+    }
+
+    mathBusy = false;
+    needRedraw = true;
+}
+
 void calculateIntersections() {
     if (!needsRecalc) {
         mathProgress = 100;
@@ -85,6 +115,8 @@ void Task_Logic(void *pvParameters) {
                 f2_error = false;
             } else if (currentMathCmd == CMD_CALC_INTERSECTS) {
                 calculateIntersections();
+            } else if (currentMathCmd == CMD_CALC_PUNKTPROBE) {
+                calculatePunktprobe();
             }
 
             currentMathCmd = CMD_IDLE;

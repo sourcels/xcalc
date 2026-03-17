@@ -131,3 +131,16 @@ void findRootsUniversal(const MathExpression& e, std::vector<Point>& roots, int 
         }
     }
 }
+
+ProbeResult checkPoint(const MathExpression& e, double px, double py) {
+    ProbeResult res;
+    if (!e.valid || e.rawStr.length() == 0) {
+        res.defined = false;
+        return res;
+    }
+    res.defined = true;
+    double val = e.evaluate(px);
+    res.diff = abs(val - py);
+    res.isOnGraph = (res.diff < 0.01);
+    return res;
+}
