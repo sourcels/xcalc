@@ -91,7 +91,7 @@ void drawMenu() {
     sprite.setTextDatum(TL_DATUM);
     sprite.setTextSize(1);
     sprite.setTextColor(COLOR_GREEN, COLOR_BG);
-    sprite.drawString("=== Kurvendiskussion ===", 10, 5);
+    sprite.drawString("=== xcalc (by shimaper) ===", 10, 5);
 
     numMenuItems = (expr1.valid || expr2.valid) ? 13 : 2;
 
@@ -189,9 +189,14 @@ void drawResultsAchsen() {
         curY += 10;
     };
 
-    if (expr1.valid) drawSection("f(x) Achsen:", f1_roots, f1_y_int, f1_has_y_int);
-    if (expr2.valid) drawSection("g(x) Achsen:", f2_roots, f2_y_int, f2_has_y_int);
-    if (expr1.valid && expr2.valid) {
+    bool bothValid = expr1.valid && expr2.valid;
+    bool sameFunc  = bothValid && f1_equals_f2;
+
+    if (expr1.valid && !sameFunc) drawSection("f(x) Achsen:", f1_roots, f1_y_int, f1_has_y_int);
+    if (expr2.valid && !sameFunc) drawSection("g(x) Achsen:", f2_roots, f2_y_int, f2_has_y_int);
+    if (sameFunc) drawSection("f(x) = g(x) Achsen:", f1_roots, f1_y_int, f1_has_y_int);
+
+    if (bothValid && !sameFunc) {
         if (f1_equals_f2) {
             sprite.setTextColor(COLOR_CYAN);
             sprite.drawString("f(x) & g(x) Schnitt:", 10, curY); curY += 15;
@@ -350,8 +355,15 @@ void drawResultsGradKoeff() {
 
     sprite.setClipRect(0, CLIP_TOP, sprite.width(), CLIP_BOT - CLIP_TOP);
 
-    if (expr1.valid) drawGradBlock("f(x) Grad & Koeff:", gradKoeffF1, expr1.rawStr, curY);
-    if (expr2.valid) drawGradBlock("g(x) Grad & Koeff:", gradKoeffF2, expr2.rawStr, curY);
+    bool bothValid_gk = expr1.valid && expr2.valid;
+    bool sameFunc_gk  = bothValid_gk && f1_equals_f2;
+
+    if (sameFunc_gk) {
+        drawGradBlock("f(x) = g(x) Grad & Koeff:", gradKoeffF1, expr1.rawStr, curY);
+    } else {
+        if (expr1.valid) drawGradBlock("f(x) Grad & Koeff:", gradKoeffF1, expr1.rawStr, curY);
+        if (expr2.valid) drawGradBlock("g(x) Grad & Koeff:", gradKoeffF2, expr2.rawStr, curY);
+    }
     if (!expr1.valid && !expr2.valid) {
         sprite.setTextColor(COLOR_GRAY);
         sprite.setTextDatum(MC_DATUM);
@@ -428,8 +440,15 @@ void drawResultsSymmetrie() {
         curY += 8;
     };
 
-    drawSymBlock("f(x) Symmetrie:", symF1, expr1.valid);
-    drawSymBlock("g(x) Symmetrie:", symF2, expr2.valid);
+    bool bothValid_sym = expr1.valid && expr2.valid;
+    bool sameFunc_sym  = bothValid_sym && f1_equals_f2;
+
+    if (sameFunc_sym) {
+        drawSymBlock("f(x) = g(x) Symmetrie:", symF1, true);
+    } else {
+        drawSymBlock("f(x) Symmetrie:", symF1, expr1.valid);
+        drawSymBlock("g(x) Symmetrie:", symF2, expr2.valid);
+    }
 
     if (!expr1.valid && !expr2.valid) {
         sprite.setTextColor(COLOR_GRAY);
@@ -455,7 +474,6 @@ void drawResultsExtrem() {
     int yStart = HEADER_H;
     int curY   = yStart - genScrollY;
 
-    // Draw header and footer first so they are always on top
     drawScrollHeader("--- Extrempunkte ---");
     drawScrollFooter();
 
@@ -495,7 +513,7 @@ void drawResultsExtrem() {
                 lbl = "T" + String(tIdx++) + "(";
                 col = COLOR_CYAN;
             } else {
-                lbl = "SP(";  // Sattelpunkt
+                lbl = "SP(";
                 col = COLOR_ORANGE;
             }
             lbl += fmtX(p.x) + " | " + fmtX(p.y) + ")";
@@ -510,8 +528,15 @@ void drawResultsExtrem() {
         curY += 8;
     };
 
-    drawExtBlock("f(x) Extrempunkte:", extremF1, expr1.valid);
-    drawExtBlock("g(x) Extrempunkte:", extremF2, expr2.valid);
+    bool bothValid_ex = expr1.valid && expr2.valid;
+    bool sameFunc_ex  = bothValid_ex && f1_equals_f2;
+
+    if (sameFunc_ex) {
+        drawExtBlock("f(x) = g(x) Extrempunkte:", extremF1, true);
+    } else {
+        drawExtBlock("f(x) Extrempunkte:", extremF1, expr1.valid);
+        drawExtBlock("g(x) Extrempunkte:", extremF2, expr2.valid);
+    }
 
     sprite.clearClipRect();
 
@@ -519,7 +544,6 @@ void drawResultsExtrem() {
     genMaxScrollHeight = std::max(0, totalH - (sprite.height() - 40));
 
     drawScrollBar(genScrollY, genMaxScrollHeight, CLIP_TOP, CLIP_BOT - CLIP_TOP);
-    // Redraw header and footer on top of scrollbar/content
     drawScrollHeader("--- Extrempunkte ---");
     drawScrollFooter();
 }
@@ -580,8 +604,15 @@ void drawResultsWendepunkte() {
         curY += 8;
     };
 
-    drawWendeBlock("f(x) Wendepunkte:", wendeF1, expr1.valid);
-    drawWendeBlock("g(x) Wendepunkte:", wendeF2, expr2.valid);
+    bool bothValid_wp = expr1.valid && expr2.valid;
+    bool sameFunc_wp  = bothValid_wp && f1_equals_f2;
+
+    if (sameFunc_wp) {
+        drawWendeBlock("f(x) = g(x) Wendepunkte:", wendeF1, true);
+    } else {
+        drawWendeBlock("f(x) Wendepunkte:", wendeF1, expr1.valid);
+        drawWendeBlock("g(x) Wendepunkte:", wendeF2, expr2.valid);
+    }
 
     sprite.clearClipRect();
 
@@ -649,8 +680,15 @@ void drawResultsKruemmung() {
         curY += 8;
     };
 
-    drawKrBlock("f(x) Kruemmung:", kruemmungF1, expr1.valid);
-    drawKrBlock("g(x) Kruemmung:", kruemmungF2, expr2.valid);
+    bool bothValid_kr = expr1.valid && expr2.valid;
+    bool sameFunc_kr  = bothValid_kr && f1_equals_f2;
+
+    if (sameFunc_kr) {
+        drawKrBlock("f(x) = g(x) Kruemmung:", kruemmungF1, true);
+    } else {
+        drawKrBlock("f(x) Kruemmung:", kruemmungF1, expr1.valid);
+        drawKrBlock("g(x) Kruemmung:", kruemmungF2, expr2.valid);
+    }
 
     sprite.clearClipRect();
 
@@ -735,8 +773,15 @@ void drawResultsMonotonie() {
         curY += 8;
     };
 
-    drawMonBlock("f(x) Monotonie:", monotF1, extremF1, expr1.valid);
-    drawMonBlock("g(x) Monotonie:", monotF2, extremF2, expr2.valid);
+    bool bothValid_mo = expr1.valid && expr2.valid;
+    bool sameFunc_mo  = bothValid_mo && f1_equals_f2;
+
+    if (sameFunc_mo) {
+        drawMonBlock("f(x) = g(x) Monotonie:", monotF1, extremF1, true);
+    } else {
+        drawMonBlock("f(x) Monotonie:", monotF1, extremF1, expr1.valid);
+        drawMonBlock("g(x) Monotonie:", monotF2, extremF2, expr2.valid);
+    }
 
     sprite.clearClipRect();
 
@@ -777,7 +822,7 @@ void drawResultsUnendlich() {
 
     sprite.setClipRect(0, CLIP_TOP, sprite.width(), CLIP_BOT - CLIP_TOP);
 
-    auto drawInfBlock = [&](const char* label, const InfResult& res, bool exprValid) {
+    auto drawInfBlock = [&](const char* label, const char* funcName, const InfResult& res, bool exprValid) {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
@@ -795,7 +840,7 @@ void drawResultsUnendlich() {
         sprite.setTextColor(TFT_WHITE);
         sprite.drawString("x -> +oo:", 20, curY); curY += 12;
 
-        String sPlus = "f(x) " + infBehaviorStr(res.atPlusInf, res.constValPlus);
+        String sPlus = String(funcName) + " " + infBehaviorStr(res.atPlusInf, res.constValPlus);
         uint16_t colP = (res.atPlusInf == INF_PLUS_INF)  ? COLOR_GREEN  :
                         (res.atPlusInf == INF_MINUS_INF) ? COLOR_RED    :
                         (res.atPlusInf == INF_ZERO)      ? COLOR_CYAN   :
@@ -806,7 +851,7 @@ void drawResultsUnendlich() {
         sprite.setTextColor(TFT_WHITE);
         sprite.drawString("x -> -oo:", 20, curY); curY += 12;
 
-        String sMinus = "f(x) " + infBehaviorStr(res.atMinusInf, res.constValMinus);
+        String sMinus = String(funcName) + " " + infBehaviorStr(res.atMinusInf, res.constValMinus);
         uint16_t colM = (res.atMinusInf == INF_PLUS_INF)  ? COLOR_GREEN  :
                         (res.atMinusInf == INF_MINUS_INF) ? COLOR_RED    :
                         (res.atMinusInf == INF_ZERO)      ? COLOR_CYAN   :
@@ -817,8 +862,15 @@ void drawResultsUnendlich() {
         curY += 8;
     };
 
-    drawInfBlock("f(x) Verhalten:", infF1, expr1.valid);
-    drawInfBlock("g(x) Verhalten:", infF2, expr2.valid);
+    bool bothValid_inf = expr1.valid && expr2.valid;
+    bool sameFunc_inf  = bothValid_inf && f1_equals_f2;
+
+    if (sameFunc_inf) {
+        drawInfBlock("f(x) = g(x) Verhalten:", "f(x)", infF1, true);
+    } else {
+        drawInfBlock("f(x) Verhalten:", "f(x)", infF1, expr1.valid);
+        drawInfBlock("g(x) Verhalten:", "g(x)", infF2, expr2.valid);
+    }
 
     sprite.clearClipRect();
 
@@ -888,43 +940,116 @@ void drawPlot() {
     int w = sprite.width();
     int h = sprite.height();
 
-    int cx = w / 2 - panX * scaleP;
-    int cy = h / 2 + panY * scaleP;
+    int cx = w / 2 - (int)(panX * scaleP);
+    int cy = h / 2 + (int)(panY * scaleP);
 
-    for (int i = 0; i < w; i++) {
-        if ((i - cx) % (int)scaleP == 0) sprite.drawFastVLine(i, 0, h, 0x2104);
+    int sp = (int)scaleP;
+    if (sp < 1) sp = 1;
+
+    int xGridStart = cx % sp;
+    if (xGridStart < 0) xGridStart += sp;
+    for (int i = xGridStart; i < w; i += sp) {
+        sprite.drawFastVLine(i, 0, h, 0x2104);
     }
-    for (int i = 0; i < h; i++) {
-        if ((i - cy) % (int)scaleP == 0) sprite.drawFastHLine(0, i, w, 0x2104);
+    int yGridStart = cy % sp;
+    if (yGridStart < 0) yGridStart += sp;
+    for (int i = yGridStart; i < h; i += sp) {
+        sprite.drawFastHLine(0, i, w, 0x2104);
     }
 
-    if (cx >= 0 && cx < w) sprite.drawFastVLine(cx, 0, h, TFT_WHITE);
-    if (cy >= 0 && cy < h) sprite.drawFastHLine(0, cy, w, TFT_WHITE);
+    int drawCX = std::max(0, std::min(w - 1, cx));
+    int drawCY = std::max(0, std::min(h - 1, cy));
+    sprite.drawFastVLine(drawCX, 0, h, TFT_WHITE);
+    sprite.drawFastHLine(0, drawCY, w, TFT_WHITE);
 
+    sprite.setTextSize(1);
+    sprite.setTextDatum(TC_DATUM);
+
+    {
+        int firstGridPx = cx % sp;
+        if (firstGridPx < 0) firstGridPx += sp;
+
+        for (int px = firstGridPx; px < w; px += sp) {
+            double mathX = (double)(px - cx) / scaleP;
+            int gridIdx = (int)round(mathX * 10);
+            if (abs(gridIdx) % 20 != 0) continue;
+            if (fabs(mathX) < 0.01) continue;
+
+            String s = String((int)round(mathX));
+            int labelY = (cy >= 2 && cy <= h - 14) ? drawCY + 2 : h - 12;
+            sprite.setTextColor(COLOR_GRAY);
+            sprite.drawString(s, px, labelY);
+        }
+    }
+
+    {
+        sprite.setTextDatum(MR_DATUM);
+        int firstGridPy = cy % sp;
+        if (firstGridPy < 0) firstGridPy += sp;
+
+        for (int py = firstGridPy; py < h; py += sp) {
+            double mathY = (double)(cy - py) / scaleP;
+            int gridIdx = (int)round(mathY * 10);
+            if (abs(gridIdx) % 20 != 0) continue;
+            if (fabs(mathY) < 0.01) continue;
+
+            String s = String((int)round(mathY));
+            int labelX = (cx >= 20 && cx <= w - 4) ? drawCX - 2 : (cx < 20 ? 24 : w - 4);
+            sprite.setTextColor(COLOR_GRAY);
+            sprite.drawString(s, labelX, py);
+        }
+    }
+
+    const int Y_MARGIN = 4;
     auto drawFunc = [&](const MathExpression& expr, uint16_t color) {
         if (!expr.valid) return;
-        int lastY = -999;
+        int lastPy = -9999;
         for (int px = 0; px < w; px++) {
-            double mathX = (px - cx) / scaleP;
+            double mathX = (double)(px - cx) / scaleP;
             double mathY = expr.evaluate(mathX);
-            if (!isnan(mathY) && !isinf(mathY)) {
-                int py = cy - mathY * scaleP;
-                if (py >= -50 && py <= h + 50) {
-                    if (lastY != -999 && px > 0) sprite.drawLine(px - 1, lastY, px, py, color);
-                    else sprite.drawPixel(px, py, color);
+            if (isnan(mathY) || isinf(mathY) || fabs(mathY) > 1e6) {
+                lastPy = -9999;
+                continue;
+            }
+            int py = cy - (int)(mathY * scaleP);
+            py = std::max(-Y_MARGIN, std::min(h + Y_MARGIN, py));
+
+            if (lastPy != -9999) {
+                if (abs(py - lastPy) < h * 3) {
+                    sprite.drawLine(px - 1, lastPy, px, py, color);
                 }
-                lastY = py;
-            } else lastY = -999;
+            } else {
+                sprite.drawPixel(px, py, color);
+            }
+            lastPy = py;
         }
     };
 
     drawFunc(expr1, TFT_GREEN);
-    drawFunc(expr2, TFT_BLUE);
+    if (expr2.valid && !f1_equals_f2) drawFunc(expr2, 0x001F);
 
-    sprite.fillRect(0, 0, w, 15, COLOR_BG);
+    sprite.setTextSize(1);
     sprite.setTextColor(TFT_WHITE);
-    sprite.drawString("WASD/Arrows: Move | M: Menu", 5, 2);
-    sprite.drawFastHLine(0, 14, w, COLOR_BORDER);
+
+    {
+        int lx = w - 10;
+        int ly = std::max(4, std::min(h - 10, drawCY - 8));
+        sprite.setTextDatum(TC_DATUM);
+        sprite.drawString("X", lx, ly);
+    }
+    {
+        int lx = std::max(4, std::min(w - 12, drawCX + 4));
+        int ly = 2;
+        sprite.setTextDatum(TL_DATUM);
+        sprite.drawString("Y", lx, ly);
+    }
+
+    sprite.fillRect(0, 0, w, 14, COLOR_BG);
+    sprite.setTextColor(0x8410);
+    sprite.setTextDatum(TL_DATUM);
+    sprite.setTextSize(1);
+    sprite.drawString("WASD:Pan QE:Zoom ESC:Menu", 4, 2);
+    sprite.drawFastHLine(0, 13, w, COLOR_BORDER);
 }
 
 void draw() {
