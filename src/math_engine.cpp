@@ -2,6 +2,182 @@
 #include <stack>
 #include <math.h>
 
+static Polynomial polyAdd(const Polynomial& a, const Polynomial& b) {
+    Polynomial res = a;
+    for (auto& kv : b) res[kv.first] += kv.second;
+    return res;
+}
+ 
+static Polynomial polySub(const Polynomial& a, const Polynomial& b) {
+    Polynomial res = a;
+    for (auto& kv : b) res[kv.first] -= kv.second;
+    return res;
+}
+ 
+static Polynomial polyMul(const Polynomial& a, const Polynomial& b) {
+    Polynomial res;
+    for (auto& ka : a)
+        for (auto& kb : b)
+            res[ka.first + kb.first] += ka.second * kb.second;
+    return res;
+}
+ 
+static Polynomial polyDiv(const Polynomial& a, double divisor, bool& ok) {
+    if (divisor == 0.0) { ok = false; return {}; }
+    Polynomial res = a;
+    for (auto& kv : res) kv.second /= divisor;
+    return res;
+}
+ 
+static Polynomial polyPow(const Polynomial& base, int exp, bool& ok) {
+    if (exp < 0) { ok = false; return {}; }
+    Polynomial res = {{0, 1.0}};
+    for (int i = 0; i < exp; i++) res = polyMul(res, base);
+    return res;
+}
+
+static Polynomial parseExpr(const String& s, int& pos, bool& ok);
+static Polynomial parseTerm(const String& s, int& pos, bool& ok);
+static Polynomial parseFactor(const String& s, int& pos, bool& ok);
+static Polynomial parsePrimary(const String& s, int& pos, bool& ok);
+ 
+static Polynomial parseExpr(const String& s, int& pos, bool& ok) {
+    Polynomial result = parseTerm(s, pos, ok);
+    if (!ok) return {};
+    while (pos < (int)s.length() && (s[pos] == '+' || s[pos] == '-')) {
+        char op = s[pos++];
+        Polynomial right = parseTerm(s, pos, ok);
+        if (!ok) return {};
+        result = (op == '+') ? polyAdd(result, right) : polySub(result, right);
+    }
+    return result;
+}
+ 
+static Polynomial parseTerm(const String& s, int& pos, bool& ok) {
+    Polynomial result = parseFactor(s, pos, ok);
+    if (!ok) return {};
+    while (pos < (int)s.length() && (s[pos] == '*' || s[pos] == '/')) {
+        char op = s[pos++];
+        Polynomial right = parseFactor(s, pos, ok);
+        if (!ok) return {};
+        if (op == '*') {
+            result = polyMul(result, right);
+        } else {
+            if (right.size() != 1 || right.count(0) == 0) { ok = false; return {}; }
+            result = polyDiv(result, right.at(0), ok);
+        }
+    }
+    return result;
+}
+ 
+static Polynomial parseFactor(const String& s, int& pos, bool& ok) {
+    Polynomial base = parsePrimary(s, pos, ok);
+    if (!ok) return {};
+    if (pos < (int)s.length() && s[pos] == '^') {
+        pos++;
+        bool neg = false;
+        if (pos < (int)s.length() && s[pos] == '-') { neg = true; pos++; }
+        if (pos >= (int)s.length() || !isdigit(s[pos])) { ok = false; return {}; }
+        int exp = 0;
+        while (pos < (int)s.length() && isdigit(s[pos])) exp = exp * 10 + (s[pos++] - '0');
+        if (neg) exp = -exp;
+        if (exp < 0 || exp > 20) { ok = false; return {}; }
+        base = polyPow(base, exp, ok);
+    }
+    return base;
+}
+ 
+static Polynomial parsePrimary(const String& s, int& pos, bool& ok) {
+    if (!ok) return {};
+    while (pos < (int)s.length() && s[pos] == ' ') pos++;
+ 
+    if (pos < (int)s.length() && s[pos] == '-') {
+        pos++;
+        Polynomial inner = parsePrimary(s, pos, ok);
+        if (!ok) return {};
+        Polynomial neg;
+        for (auto& kv : inner) neg[kv.first] = -kv.second;
+        return neg;
+    }
+ 
+    if (pos < (int)s.length() && s[pos] == '+') {
+        pos++;
+        return parsePrimary(s, pos, ok);
+    }
+ 
+    if (pos < (int)s.length() && s[pos] == '(') {
+        pos++;
+        Polynomial inner = parseExpr(s, pos, ok);
+        if (!ok) return {};
+        if (pos >= (int)s.length() || s[pos] != ')') { ok = false; return {}; }
+        pos++;
+        return inner;
+    }
+ 
+    if (pos < (int)s.length() && s[pos] == 'x') {
+        pos++;
+        return {{1, 1.0}};
+    }
+ 
+    if (pos < (int)s.length() && (isdigit(s[pos]) || s[pos] == '.')) {
+        String numStr = "";
+        while (pos < (int)s.length() && (isdigit(s[pos]) || s[pos] == '.')) numStr += s[pos++];
+        return {{0, numStr.toDouble()}};
+    }
+ 
+    ok = false;
+    return {};
+}
+ 
+GradKoeffResult expandToPolynomial(const String& rawStr) {
+    GradKoeffResult res;
+    if (rawStr.length() == 0) {
+        res.errorMsg = "Kein Ausdruck!";
+        return res;
+    }
+ 
+    String s = rawStr;
+    s.replace(" ", "");
+    s.toLowerCase();
+ 
+    String processed = "";
+    for (int i = 0; i < (int)s.length(); i++) {
+        processed += s[i];
+        if (i < (int)s.length() - 1) {
+            char c1 = s[i];
+            char c2 = s[i+1];
+            if ((isdigit(c1) && (c2 == 'x' || c2 == '(')) ||
+                (c1 == 'x' && (isdigit(c2) || c2 == '(' || c2 == 'x')) ||
+                (c1 == ')' && (isdigit(c2) || c2 == 'x' || c2 == '('))) {
+                processed += '*';
+            }
+        }
+    }
+    s = processed;
+ 
+    bool ok = true;
+    int pos = 0;
+    Polynomial poly = parseExpr(s, pos, ok);
+ 
+    if (!ok || pos < (int)s.length()) {
+        res.errorMsg = "Parse-Fehler!";
+        return res;
+    }
+ 
+    Polynomial cleaned;
+    for (auto& kv : poly) {
+        if (fabs(kv.second) > 1e-10) cleaned[kv.first] = kv.second;
+    }
+ 
+    int maxDeg = 0;
+    for (auto& kv : cleaned) if (kv.first > maxDeg) maxDeg = kv.first;
+ 
+    res.success = true;
+    res.grad = maxDeg;
+    res.coeffs = cleaned;
+    return res;
+}
+
 int getPrecedence(char op) {
     if (op == '+' || op == '-') return 1;
     if (op == '*' || op == '/') return 2;

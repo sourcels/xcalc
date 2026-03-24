@@ -6,7 +6,8 @@ enum MathCommand {
     CMD_VALIDATE_F1,
     CMD_VALIDATE_F2,
     CMD_CALC_INTERSECTS,
-    CMD_CALC_PUNKTPROBE
+    CMD_CALC_PUNKTPROBE,
+    CMD_CALC_GRADKOEFF
 };
 
 extern volatile MathCommand currentMathCmd;
@@ -30,6 +31,10 @@ extern String probeInput;
 extern ProbeResult resF1, resF2;
 extern bool probeFormatError;
 
+extern GradKoeffResult gradKoeffF1;
+extern GradKoeffResult gradKoeffF2;
+
 void calculatePunktprobe();
+void calculateGradKoeff();
 
 void Task_Logic(void *pvParameters);

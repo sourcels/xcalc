@@ -18,6 +18,9 @@ String probeInput = "";
 ProbeResult resF1, resF2;
 bool probeFormatError = false;
 
+GradKoeffResult gradKoeffF1;
+GradKoeffResult gradKoeffF2;
+
 void calculatePunktprobe() {
     mathBusy = true;
     mathProgress = 0;
@@ -39,6 +42,30 @@ void calculatePunktprobe() {
     } else {
         probeFormatError = true;
     }
+
+    mathBusy = false;
+    needRedraw = true;
+}
+
+void calculateGradKoeff() {
+    mathBusy = true;
+    mathProgress = 0;
+    needRedraw = true;
+
+    if (expr1.valid && expr1.rawStr.length() > 0) {
+        gradKoeffF1 = expandToPolynomial(expr1.rawStr);
+    } else {
+        gradKoeffF1 = GradKoeffResult();
+    }
+    mathProgress = 50;
+    needRedraw = true;
+
+    if (expr2.valid && expr2.rawStr.length() > 0) {
+        gradKoeffF2 = expandToPolynomial(expr2.rawStr);
+    } else {
+        gradKoeffF2 = GradKoeffResult();
+    }
+    mathProgress = 100;
 
     mathBusy = false;
     needRedraw = true;
@@ -117,6 +144,8 @@ void Task_Logic(void *pvParameters) {
                 calculateIntersections();
             } else if (currentMathCmd == CMD_CALC_PUNKTPROBE) {
                 calculatePunktprobe();
+            } else if (currentMathCmd == CMD_CALC_GRADKOEFF) {
+                calculateGradKoeff();
             }
 
             currentMathCmd = CMD_IDLE;

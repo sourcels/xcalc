@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <vector>
+#include <map>
 
 struct Point {
     double x, y;
@@ -17,6 +18,17 @@ struct ProbeResult {
     bool isOnGraph = false;
     double diff = 0;
 };
+
+typedef std::map<int, double> Polynomial;
+ 
+struct GradKoeffResult {
+    bool success = false;
+    int grad = 0;
+    Polynomial coeffs;
+    String errorMsg = "";
+};
+
+GradKoeffResult expandToPolynomial(const String& rawStr);
 
 ProbeResult checkPoint(const MathExpression& e, double px, double py);
 
