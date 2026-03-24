@@ -4,8 +4,8 @@ The Ultimate Pocket Math Engine for **M5Cardputer Adv**
 
 xcalc is a sophisticated mathematical analysis tool built specifically for the M5Stack Cardputer Adv. Designed with the German school and university curriculum in mind, it transforms your portable ESP32 device into a high-performance computer algebra system (CAS) capable of everything from basic plotting to advanced calculus.
 
-[!NOTE]
-Localized for Germany: While the documentation is in English, the device interface uses standard German mathematical terminology (Kurvendiskussion style).
+> WARNING: GERMAN LOCALIZATION
+> Localized for Germany: While the documentation is in English, the device interface uses standard German mathematical terminology (Kurvendiskussion style).
 
 ## 🛠 Features (The 13-Function Suite)
 
@@ -41,11 +41,13 @@ Prerequisites
 Clone the repo:
 
 2. Bash
+```
 git clone https://github.com/yourusername/xcalc.git
+```
 Open in **PlatformIO**:
 Launch VS Code and open the xcalc folder.
 
-3. Upload:
+4. Upload:
 Connect your Cardputer Adv and hit the PlatformIO: Upload button (the arrow icon in the status bar).
 
 ## ⌨️ Controls
