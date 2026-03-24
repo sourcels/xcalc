@@ -7,13 +7,13 @@ static Polynomial polyAdd(const Polynomial& a, const Polynomial& b) {
     for (auto& kv : b) res[kv.first] += kv.second;
     return res;
 }
- 
+
 static Polynomial polySub(const Polynomial& a, const Polynomial& b) {
     Polynomial res = a;
     for (auto& kv : b) res[kv.first] -= kv.second;
     return res;
 }
- 
+
 static Polynomial polyMul(const Polynomial& a, const Polynomial& b) {
     Polynomial res;
     for (auto& ka : a)
@@ -21,16 +21,24 @@ static Polynomial polyMul(const Polynomial& a, const Polynomial& b) {
             res[ka.first + kb.first] += ka.second * kb.second;
     return res;
 }
- 
+
 static Polynomial polyDiv(const Polynomial& a, double divisor, bool& ok) {
     if (divisor == 0.0) { ok = false; return {}; }
     Polynomial res = a;
     for (auto& kv : res) kv.second /= divisor;
     return res;
 }
- 
+
 static Polynomial polyPow(const Polynomial& base, int exp, bool& ok) {
-    if (exp < 0) { ok = false; return {}; }
+    if (exp < 0) {
+        if (base.size() == 1) {
+            auto it = base.begin();
+            if (it->second == 1.0) {
+                return {{it->first * exp, 1.0}};
+            }
+        }
+        ok = false; return {};
+    }
     Polynomial res = {{0, 1.0}};
     for (int i = 0; i < exp; i++) res = polyMul(res, base);
     return res;
@@ -40,7 +48,7 @@ static Polynomial parseExpr(const String& s, int& pos, bool& ok);
 static Polynomial parseTerm(const String& s, int& pos, bool& ok);
 static Polynomial parseFactor(const String& s, int& pos, bool& ok);
 static Polynomial parsePrimary(const String& s, int& pos, bool& ok);
- 
+
 static Polynomial parseExpr(const String& s, int& pos, bool& ok) {
     Polynomial result = parseTerm(s, pos, ok);
     if (!ok) return {};
@@ -52,7 +60,7 @@ static Polynomial parseExpr(const String& s, int& pos, bool& ok) {
     }
     return result;
 }
- 
+
 static Polynomial parseTerm(const String& s, int& pos, bool& ok) {
     Polynomial result = parseFactor(s, pos, ok);
     if (!ok) return {};
@@ -69,7 +77,7 @@ static Polynomial parseTerm(const String& s, int& pos, bool& ok) {
     }
     return result;
 }
- 
+
 static Polynomial parseFactor(const String& s, int& pos, bool& ok) {
     Polynomial base = parsePrimary(s, pos, ok);
     if (!ok) return {};
@@ -81,16 +89,16 @@ static Polynomial parseFactor(const String& s, int& pos, bool& ok) {
         int exp = 0;
         while (pos < (int)s.length() && isdigit(s[pos])) exp = exp * 10 + (s[pos++] - '0');
         if (neg) exp = -exp;
-        if (exp < 0 || exp > 20) { ok = false; return {}; }
+        if (exp < -20 || exp > 20) { ok = false; return {}; }
         base = polyPow(base, exp, ok);
     }
     return base;
 }
- 
+
 static Polynomial parsePrimary(const String& s, int& pos, bool& ok) {
     if (!ok) return {};
     while (pos < (int)s.length() && s[pos] == ' ') pos++;
- 
+
     if (pos < (int)s.length() && s[pos] == '-') {
         pos++;
         Polynomial inner = parsePrimary(s, pos, ok);
@@ -99,12 +107,12 @@ static Polynomial parsePrimary(const String& s, int& pos, bool& ok) {
         for (auto& kv : inner) neg[kv.first] = -kv.second;
         return neg;
     }
- 
+
     if (pos < (int)s.length() && s[pos] == '+') {
         pos++;
         return parsePrimary(s, pos, ok);
     }
- 
+
     if (pos < (int)s.length() && s[pos] == '(') {
         pos++;
         Polynomial inner = parseExpr(s, pos, ok);
@@ -113,29 +121,29 @@ static Polynomial parsePrimary(const String& s, int& pos, bool& ok) {
         pos++;
         return inner;
     }
- 
+
     if (pos < (int)s.length() && s[pos] == 'x') {
         pos++;
         return {{1, 1.0}};
     }
- 
+
     if (pos < (int)s.length() && (isdigit(s[pos]) || s[pos] == '.')) {
         String numStr = "";
         while (pos < (int)s.length() && (isdigit(s[pos]) || s[pos] == '.')) numStr += s[pos++];
         return {{0, numStr.toDouble()}};
     }
- 
+
     ok = false;
     return {};
 }
- 
+
 GradKoeffResult expandToPolynomial(const String& rawStr) {
     GradKoeffResult res;
     if (rawStr.length() == 0) {
         res.errorMsg = "Kein Ausdruck!";
         return res;
     }
- 
+
     String s = rawStr;
     s.replace(" ", "");
     s.toLowerCase();
@@ -154,7 +162,7 @@ GradKoeffResult expandToPolynomial(const String& rawStr) {
         }
     }
     s = processed;
- 
+
     bool ok = true;
     int pos = 0;
     Polynomial poly = parseExpr(s, pos, ok);
@@ -163,12 +171,12 @@ GradKoeffResult expandToPolynomial(const String& rawStr) {
         res.errorMsg = "Parse-Fehler!";
         return res;
     }
- 
+
     Polynomial cleaned;
     for (auto& kv : poly) {
         if (fabs(kv.second) > 1e-10) cleaned[kv.first] = kv.second;
     }
- 
+
     int maxDeg = 0;
     for (auto& kv : cleaned) if (kv.first > maxDeg) maxDeg = kv.first;
  
@@ -220,7 +228,7 @@ double MathExpression::evaluate(double x) const {
     
     std::stack<double> values;
     std::stack<char> ops;
-
+    
     for (int i = 0; i < s.length(); i++) {
         if (s[i] == ' ') continue;
 
@@ -306,6 +314,43 @@ void findRootsUniversal(const MathExpression& e, std::vector<Point>& roots, int 
             }
         }
     }
+}
+
+SymmetrieResult checkSymmetrie(const MathExpression& e) {
+    SymmetrieResult res;
+    if (!e.valid || e.rawStr.length() == 0) return res;
+    res.defined = true;
+
+    const double testXs[] = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0,
+                              0.25, 0.75, 1.25, 1.75, 6.0, 7.0, 8.0,
+                              0.1, 0.3, 9.0, 10.0, 3.5};
+    const int N = 20;
+
+    double achseSum = 0, punktSum = 0;
+    int validCount = 0;
+
+    for (int i = 0; i < N; i++) {
+        double x = testXs[i];
+        double fx  = e.evaluate(x);
+        double f_x = e.evaluate(-x);
+        if (isnan(fx) || isnan(f_x) || isinf(fx) || isinf(f_x)) continue;
+
+        double scale = std::max(1.0, fabs(fx));
+        achseSum += fabs(f_x - fx) / scale;
+        punktSum += fabs(f_x + fx) / scale;
+        validCount++;
+    }
+
+    if (validCount == 0) { res.type = SYM_UNKNOWN; return res; }
+
+    res.achseErr = achseSum / validCount;
+    res.punktErr = punktSum / validCount;
+
+    double eps = 1e-4;
+    if (res.achseErr < eps)      res.type = SYM_ACHSE;
+    else if (res.punktErr < eps) res.type = SYM_PUNKT;
+    else                         res.type = SYM_KEINE;
+    return res;
 }
 
 ProbeResult checkPoint(const MathExpression& e, double px, double py) {

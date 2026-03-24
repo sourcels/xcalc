@@ -15,10 +15,11 @@ const char* menuItemsAll[] = {
     "3. Schnittpunkte finden",
     "4. Punktprobe (x,y)",
     "5. Grad & Koeffizienten",
-    "6. Extrempunkte",
-    "7. Wendepunkte",
-    "8. Kruemmungsverhalten",
-    "9. Monotonie"
+    "6. Symmetrie",
+    "7. Extrempunkte",
+    "8. Wendepunkte",
+    "9. Kruemmungsverhalten",
+    "10. Monotonie"
 };
 
 int numMenuItems = 2;
@@ -26,7 +27,6 @@ int selectedMenuItem = 0;
 int resultScrollY = 0;
 int maxScrollHeight = 0;
 
-// Scroll state for Grad/Koeff view
 static int gradScrollY = 0;
 static int gradMaxScrollHeight = 0;
 
@@ -47,7 +47,7 @@ void drawMenu() {
     sprite.setTextColor(COLOR_GREEN, COLOR_BG);
     sprite.drawString("=== Kurvendiskussion ===", 10, 5);
 
-    numMenuItems = (expr1.valid || expr2.valid) ? 9 : 2;
+    numMenuItems = (expr1.valid || expr2.valid) ? 10 : 2;
 
     int y = 25;
     int startIdx = (selectedMenuItem > 3) ? selectedMenuItem - 3 : 0;
@@ -197,16 +197,13 @@ void drawPunktProbe() {
     }
 }
 
-// ─── Helper: format a coefficient value nicely ──────────────────────────────
 static String fmtCoeff(double v) {
-    // Show up to 4 decimal places, strip trailing zeros
     String s = String(v, 4);
     while (s.endsWith("0") && s.indexOf('.') != -1) s.remove(s.length() - 1);
     if (s.endsWith(".")) s.remove(s.length() - 1);
     return s;
 }
 
-// ─── Draw one GradKoeffResult block ─────────────────────────────────────────
 static void drawGradBlock(const char* label, const GradKoeffResult& res, const String& rawStr, int& curY) {
     // Section header
     sprite.setTextColor(COLOR_YELLOW);
@@ -224,11 +221,8 @@ static void drawGradBlock(const char* label, const GradKoeffResult& res, const S
         return;
     }
 
-    // Expanded form line: e.g.  "= x^2 - 5x"
-    // Build it from coefficients, highest first
     String expanded = "= ";
     bool first = true;
-    // map is sorted ascending; iterate in reverse
     for (auto it = res.coeffs.rbegin(); it != res.coeffs.rend(); ++it) {
         int deg = it->first;
         double coef = it->second;
@@ -252,25 +246,37 @@ static void drawGradBlock(const char* label, const GradKoeffResult& res, const S
             expanded += "x^" + String(deg);
         }
     }
-    if (first) expanded += "0";  // zero polynomial
+    if (first) expanded += "0";
 
     sprite.setTextColor(COLOR_CYAN);
     sprite.drawString(expanded, 20, curY); curY += 14;
 
-    // Grad line
     sprite.setTextColor(TFT_WHITE);
-    sprite.drawString("n = " + String(res.grad), 20, curY); curY += 12;
+    if (res.grad >= 0) {
+        sprite.drawString("n = " + String(res.grad), 20, curY); curY += 12;
+    }
 
-    // Coefficients from highest to lowest (including zero ones up to grad)
-    for (int d = res.grad; d >= 0; d--) {
-        double coef = 0.0;
-        auto it = res.coeffs.find(d);
-        if (it != res.coeffs.end()) coef = it->second;
+    bool hasNegDeg = false;
+    for (auto& kv : res.coeffs) if (kv.first < 0) { hasNegDeg = true; break; }
 
-        String line = "a" + String(d) + " = " + fmtCoeff(coef);
-        sprite.setTextColor(coef != 0.0 ? TFT_WHITE : COLOR_GRAY);
-        sprite.drawString(line, 20, curY);
-        curY += 12;
+    if (hasNegDeg) {
+        for (auto it = res.coeffs.rbegin(); it != res.coeffs.rend(); ++it) {
+            int d = it->first;
+            double coef = it->second;
+            String degStr = (d == 0) ? "0" : (d == 1 ? "1" : String(d));
+            String line = "a" + degStr + " = " + fmtCoeff(coef);
+            sprite.setTextColor(TFT_WHITE);
+            sprite.drawString(line, 20, curY); curY += 12;
+        }
+    } else {
+        for (int d = res.grad; d >= 0; d--) {
+            double coef = 0.0;
+            auto it = res.coeffs.find(d);
+            if (it != res.coeffs.end()) coef = it->second;
+            String line = "a" + String(d) + " = " + fmtCoeff(coef);
+            sprite.setTextColor(coef != 0.0 ? TFT_WHITE : COLOR_GRAY);
+            sprite.drawString(line, 20, curY); curY += 12;
+        }
     }
     curY += 8;
 }
@@ -293,7 +299,6 @@ void drawResultsGradKoeff() {
     int totalContentH = (curY + gradScrollY) - yStart;
     gradMaxScrollHeight = std::max(0, totalContentH - (sprite.height() - 40));
 
-    // Header bar
     sprite.fillRect(0, 0, sprite.width(), 20, COLOR_BG);
     sprite.drawRect(5, 2, sprite.width() - 10, 16, COLOR_BORDER);
     sprite.fillRect(6, 3, sprite.width() - 12, 14, 0x2104);
@@ -301,7 +306,6 @@ void drawResultsGradKoeff() {
     sprite.setTextColor(COLOR_GREEN);
     sprite.drawString("- Grad & Koeffizienten -", sprite.width() / 2, 10);
 
-    // Scrollbar indicator (right edge, only if scrollable)
     if (gradMaxScrollHeight > 0) {
         int sbH = sprite.height() - 40;
         int thumbH = std::max(8, sbH * sbH / (sbH + gradMaxScrollHeight));
@@ -310,11 +314,86 @@ void drawResultsGradKoeff() {
         sprite.fillRect(sprite.width() - 4, thumbY, 3, thumbH, COLOR_GRAY);
     }
 
-    // Footer
     sprite.fillRect(0, sprite.height() - 18, sprite.width(), 18, COLOR_BG);
     sprite.setTextColor(COLOR_GRAY);
     sprite.setTextDatum(TL_DATUM);
     sprite.drawString("W/S: Scroll | ESC: Zurueck", 10, sprite.height() - 15);
+}
+
+void drawResultsSymmetrie() {
+    sprite.fillSprite(COLOR_BG);
+
+    // Header
+    sprite.fillRect(0, 0, sprite.width(), 20, COLOR_BG);
+    sprite.drawRect(5, 2, sprite.width() - 10, 16, COLOR_BORDER);
+    sprite.fillRect(6, 3, sprite.width() - 12, 14, 0x2104);
+    sprite.setTextDatum(MC_DATUM);
+    sprite.setTextColor(COLOR_GREEN);
+    sprite.drawString("--- Symmetrie ---", sprite.width() / 2, 10);
+    sprite.setTextDatum(TL_DATUM);
+
+    int curY = 28;
+
+    auto drawSymBlock = [&](const char* label, const SymmetrieResult& res, bool exprValid) {
+        sprite.setTextColor(COLOR_YELLOW);
+        sprite.drawString(label, 10, curY); curY += 14;
+
+        if (!exprValid) {
+            sprite.setTextColor(COLOR_GRAY);
+            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
+            curY += 6;
+            return;
+        }
+        if (!res.defined) {
+            sprite.setTextColor(COLOR_RED);
+            sprite.drawString("Fehler!", 20, curY); curY += 12;
+            curY += 6;
+            return;
+        }
+
+        switch (res.type) {
+            case SYM_ACHSE:
+                sprite.setTextColor(COLOR_GREEN);
+                sprite.drawString("Achsensymmetrie", 20, curY); curY += 13;
+                sprite.setTextColor(TFT_WHITE);
+                sprite.drawString("zur y-Achse", 20, curY); curY += 13;
+                sprite.setTextColor(COLOR_CYAN);
+                sprite.drawString("f(-x) = f(x)", 20, curY); curY += 13;
+                break;
+            case SYM_PUNKT:
+                sprite.setTextColor(COLOR_GREEN);
+                sprite.drawString("Punktsymmetrie", 20, curY); curY += 13;
+                sprite.setTextColor(TFT_WHITE);
+                sprite.drawString("zum Ursprung (0|0)", 20, curY); curY += 13;
+                sprite.setTextColor(COLOR_CYAN);
+                sprite.drawString("f(-x) = -f(x)", 20, curY); curY += 13;
+                break;
+            case SYM_KEINE:
+                sprite.setTextColor(COLOR_RED);
+                sprite.drawString("Keine Symmetrie", 20, curY); curY += 13;
+                break;
+            default:
+                sprite.setTextColor(COLOR_GRAY);
+                sprite.drawString("Unbestimmt", 20, curY); curY += 13;
+                break;
+        }
+        curY += 8;
+    };
+
+    drawSymBlock("f(x) Symmetrie:", symF1, expr1.valid);
+    drawSymBlock("g(x) Symmetrie:", symF2, expr2.valid);
+
+    if (!expr1.valid && !expr2.valid) {
+        sprite.setTextColor(COLOR_GRAY);
+        sprite.setTextDatum(MC_DATUM);
+        sprite.drawString("Keine Funktion definiert!", sprite.width()/2, 70);
+        sprite.setTextDatum(TL_DATUM);
+    }
+
+    sprite.fillRect(0, sprite.height() - 18, sprite.width(), 18, COLOR_BG);
+    sprite.setTextColor(COLOR_GRAY);
+    sprite.setTextDatum(TL_DATUM);
+    sprite.drawString("ESC: Zurueck", 10, sprite.height() - 15);
 }
 
 void draw() {
@@ -326,8 +405,9 @@ void draw() {
     else if (currentState == STATE_RESULTS_ACHSEN)     drawResultsAchsen();
     else if (currentState == STATE_INPUT_PUNKTPROBE)   drawPunktProbe();
     else if (currentState == STATE_RESULTS_GRADKOEFF)  drawResultsGradKoeff();
+    else if (currentState == STATE_RESULTS_SYMMETRIE)   drawResultsSymmetrie();
 
-    if (mathBusy) {
+    if (showBusyOverlay) {
         int bw = 160, bh = 50;
         int bx = (sprite.width() - bw) / 2;
         int by = (sprite.height() - bh) / 2;
@@ -347,7 +427,7 @@ void draw() {
 }
 
 void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
-    if (mathBusy) return;
+    if (mathBusy || showBusyOverlay) return;
 
     if (currentState == STATE_MENU) {
         if (ch == 'w' || ch == ';') { 
@@ -371,6 +451,9 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
                 currentMathCmd = CMD_CALC_GRADKOEFF;
                 gradScrollY = 0;
                 currentState = STATE_RESULTS_GRADKOEFF;
+            } else if (selectedMenuItem == 5) {
+                currentMathCmd = CMD_CALC_SYMMETRIE;
+                currentState = STATE_RESULTS_SYMMETRIE;
             }
             needRedraw = true;
         }
@@ -438,6 +521,11 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
             gradScrollY = std::min(gradMaxScrollHeight, gradScrollY + 12);
             needRedraw = true;
         } else if (ch == 27 || ch == '`' || ks.del) {
+            currentState = STATE_MENU;
+            needRedraw = true;
+        }
+    } else if (currentState == STATE_RESULTS_SYMMETRIE) {
+        if (ch == 27 || ch == '`' || ks.del || ks.enter) {
             currentState = STATE_MENU;
             needRedraw = true;
         }

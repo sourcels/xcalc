@@ -2,6 +2,7 @@
 
 volatile MathCommand currentMathCmd = CMD_IDLE;
 volatile bool mathBusy = false;
+volatile bool showBusyOverlay = false;
 volatile bool f1_error = false;
 volatile bool f2_error = false;
 volatile bool needsRecalc = true;
@@ -20,6 +21,9 @@ bool probeFormatError = false;
 
 GradKoeffResult gradKoeffF1;
 GradKoeffResult gradKoeffF2;
+
+SymmetrieResult symF1;
+SymmetrieResult symF2;
 
 void calculatePunktprobe() {
     mathBusy = true;
@@ -128,11 +132,30 @@ void calculateIntersections() {
     mathBusy = false;
 }
 
+void calculateSymmetrie() {
+    mathBusy = true;
+    mathProgress = 0;
+    needRedraw = true;
+
+    symF1 = checkSymmetrie(expr1);
+    mathProgress = 50;
+    needRedraw = true;
+
+    symF2 = checkSymmetrie(expr2);
+    mathProgress = 100;
+
+    mathBusy = false;
+    needRedraw = true;
+}
+
 void Task_Logic(void *pvParameters) {
     while (true) {
         if (currentMathCmd != CMD_IDLE) {
             mathBusy = true;
+            showBusyOverlay = true;
             needRedraw = true;
+
+            vTaskDelay(80 / portTICK_PERIOD_MS);
 
             if (currentMathCmd == CMD_VALIDATE_F1) {
                 expr1.valid = (expr1.rawStr.length() > 0); 
@@ -146,10 +169,13 @@ void Task_Logic(void *pvParameters) {
                 calculatePunktprobe();
             } else if (currentMathCmd == CMD_CALC_GRADKOEFF) {
                 calculateGradKoeff();
+            } else if (currentMathCmd == CMD_CALC_SYMMETRIE) {
+                calculateSymmetrie();
             }
 
             currentMathCmd = CMD_IDLE;
             mathBusy = false;
+            showBusyOverlay = false;
             needRedraw = true;
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);

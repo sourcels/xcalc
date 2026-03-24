@@ -30,6 +30,22 @@ struct GradKoeffResult {
 
 GradKoeffResult expandToPolynomial(const String& rawStr);
 
+enum SymmetrieType {
+    SYM_UNKNOWN,
+    SYM_ACHSE,
+    SYM_PUNKT,
+    SYM_KEINE
+};
+
+struct SymmetrieResult {
+    bool defined = false;
+    SymmetrieType type = SYM_UNKNOWN;
+    double achseErr = 0.0;
+    double punktErr = 0.0;
+};
+
+SymmetrieResult checkSymmetrie(const MathExpression& e);
+
 ProbeResult checkPoint(const MathExpression& e, double px, double py);
 
 int getPrecedence(char op);

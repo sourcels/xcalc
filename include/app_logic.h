@@ -7,11 +7,13 @@ enum MathCommand {
     CMD_VALIDATE_F2,
     CMD_CALC_INTERSECTS,
     CMD_CALC_PUNKTPROBE,
-    CMD_CALC_GRADKOEFF
+    CMD_CALC_GRADKOEFF,
+    CMD_CALC_SYMMETRIE
 };
 
 extern volatile MathCommand currentMathCmd;
 extern volatile bool mathBusy;
+extern volatile bool showBusyOverlay;
 extern volatile bool f1_error;
 extern volatile bool f2_error;
 extern volatile bool needsRecalc;
@@ -34,7 +36,11 @@ extern bool probeFormatError;
 extern GradKoeffResult gradKoeffF1;
 extern GradKoeffResult gradKoeffF2;
 
+extern SymmetrieResult symF1;
+extern SymmetrieResult symF2;
+
 void calculatePunktprobe();
 void calculateGradKoeff();
+void calculateSymmetrie();
 
 void Task_Logic(void *pvParameters);
