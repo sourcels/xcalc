@@ -223,6 +223,139 @@ double applyOp(double a, double b, char op) {
     return 0;
 }
 
+static bool matchFunc(const String& s, int pos, const char* name) {
+    int len = strlen(name);
+    if (pos + len > (int)s.length()) return false;
+    for (int i = 0; i < len; i++)
+        if (s[pos + i] != name[i]) return false;
+    return (pos + len < (int)s.length() && s[pos + len] == '(');
+}
+
+static double applyUnary(const char* name, double arg) {
+    if (strcmp(name, "sin")    == 0) return sin(arg);
+    if (strcmp(name, "cos")    == 0) return cos(arg);
+    if (strcmp(name, "tan")    == 0) return tan(arg);
+    if (strcmp(name, "arcsin") == 0) return asin(arg);
+    if (strcmp(name, "arccos") == 0) return acos(arg);
+    if (strcmp(name, "arctan") == 0) return atan(arg);
+    if (strcmp(name, "asin")   == 0) return asin(arg);
+    if (strcmp(name, "acos")   == 0) return acos(arg);
+    if (strcmp(name, "atan")   == 0) return atan(arg);
+    if (strcmp(name, "sinh")   == 0) return sinh(arg);
+    if (strcmp(name, "cosh")   == 0) return cosh(arg);
+    if (strcmp(name, "tanh")   == 0) return tanh(arg);
+    if (strcmp(name, "ln")     == 0) return (arg > 0) ? log(arg) : NAN;
+    if (strcmp(name, "log")    == 0) return (arg > 0) ? log10(arg) : NAN;
+    if (strcmp(name, "exp")    == 0) return exp(arg);
+    if (strcmp(name, "sqrt")   == 0) return (arg >= 0) ? sqrt(arg) : NAN;
+    if (strcmp(name, "abs")    == 0) return fabs(arg);
+    return NAN;
+}
+
+static const char* KNOWN_FUNCS[] = {
+    "arcsin", "arccos", "arctan",
+    "sinh", "cosh", "tanh",
+    "asin", "acos", "atan",
+    "sqrt", "exp", "log",
+    "sin", "cos", "tan",
+    "abs", "ln",
+    nullptr
+};
+
+static double evalExpr(const String& s, int& pos, double x);
+static double evalTerm(const String& s, int& pos, double x);
+static double evalFactor(const String& s, int& pos, double x);
+static double evalPrimary(const String& s, int& pos, double x);
+
+static double evalExpr(const String& s, int& pos, double x) {
+    double result = evalTerm(s, pos, x);
+    while (pos < (int)s.length() && (s[pos] == '+' || s[pos] == '-')) {
+        char op = s[pos++];
+        double right = evalTerm(s, pos, x);
+        result = (op == '+') ? result + right : result - right;
+    }
+    return result;
+}
+
+static double evalTerm(const String& s, int& pos, double x) {
+    double result = evalFactor(s, pos, x);
+    while (pos < (int)s.length() && (s[pos] == '*' || s[pos] == '/')) {
+        char op = s[pos++];
+        double right = evalFactor(s, pos, x);
+        if (op == '*') result *= right;
+        else           result = (right != 0.0) ? result / right : NAN;
+    }
+    return result;
+}
+
+static double evalFactor(const String& s, int& pos, double x) {
+    double base = evalPrimary(s, pos, x);
+    if (pos < (int)s.length() && s[pos] == '^') {
+        pos++;
+        // Optionale Klammern um Exponenten
+        bool parenExp = (pos < (int)s.length() && s[pos] == '(');
+        if (parenExp) pos++;
+        double exp = evalPrimary(s, pos, x);
+        if (parenExp) {
+            if (pos < (int)s.length() && s[pos] == ')') pos++;
+        }
+        base = pow(base, exp);
+    }
+    return base;
+}
+
+static double evalPrimary(const String& s, int& pos, double x) {
+    // Leerzeichen ueberspringen
+    while (pos < (int)s.length() && s[pos] == ' ') pos++;
+    if (pos >= (int)s.length()) return NAN;
+
+    // Unäres Minus
+    if (s[pos] == '-') {
+        pos++;
+        return -evalPrimary(s, pos, x);
+    }
+    // Unäres Plus
+    if (s[pos] == '+') {
+        pos++;
+        return evalPrimary(s, pos, x);
+    }
+
+    // Bekannte math-Funktionen pruefen
+    for (int fi = 0; KNOWN_FUNCS[fi] != nullptr; fi++) {
+        const char* fname = KNOWN_FUNCS[fi];
+        if (matchFunc(s, pos, fname)) {
+            pos += strlen(fname) + 1; // name + '('
+            double arg = evalExpr(s, pos, x);
+            if (pos < (int)s.length() && s[pos] == ')') pos++;
+            return applyUnary(fname, arg);
+        }
+    }
+
+    // Klammerausdruck
+    if (s[pos] == '(') {
+        pos++;
+        double val = evalExpr(s, pos, x);
+        if (pos < (int)s.length() && s[pos] == ')') pos++;
+        return val;
+    }
+
+    // Variable x
+    if (s[pos] == 'x') {
+        pos++;
+        return x;
+    }
+
+    // Zahl (mit optionalem Dezimalpunkt)
+    if (isdigit(s[pos]) || s[pos] == '.') {
+        String numStr = "";
+        while (pos < (int)s.length() && (isdigit(s[pos]) || s[pos] == '.'))
+            numStr += s[pos++];
+        return numStr.toDouble();
+    }
+
+    return NAN; // Unbekanntes Zeichen
+}
+
 double MathExpression::evaluate(double x) const {
     if (rawStr.length() == 0) return NAN;
 
@@ -230,68 +363,45 @@ double MathExpression::evaluate(double x) const {
     s.replace(" ", "");
     s.toLowerCase();
 
+    // Implizite Multiplikation einfuegen:
+    // 2x -> 2*x, 2( -> 2*(, )( -> )*(, )x -> )*x, x( -> x*(
+    // ACHTUNG: nicht zwischen Buchstaben (Funktionsnamen schuetzen)
     String processed = "";
-    for (int i = 0; i < s.length(); i++) {
+    for (int i = 0; i < (int)s.length(); i++) {
         processed += s[i];
-        if (i < s.length() - 1) {
+        if (i < (int)s.length() - 1) {
             char c1 = s[i];
-            char c2 = s[i+1];
-            if ((isdigit(c1) && (c2 == 'x' || c2 == '(')) ||
-                (c1 == 'x' && (isdigit(c2) || c2 == '(' || c2 == 'x')) ||
-                (c1 == ')' && (isdigit(c2) || c2 == 'x' || c2 == '('))) {
+            char c2 = s[i + 1];
+            bool c1IsAlpha = isalpha(c1);
+            bool c2IsAlpha = isalpha(c2);
+            // Zahl gefolgt von x oder '('
+            if (isdigit(c1) && (c2 == 'x' || c2 == '(')) {
+                processed += '*';
+            }
+            // x gefolgt von Zahl oder '('
+            else if (c1 == 'x' && (isdigit(c2) || c2 == '(')) {
+                processed += '*';
+            }
+            // ')' gefolgt von Zahl, x oder '('
+            else if (c1 == ')' && (isdigit(c2) || c2 == 'x' || c2 == '(')) {
+                processed += '*';
+            }
+            // ')' gefolgt von Buchstabe (Funktionsname) -> implizite Mult
+            else if (c1 == ')' && c2IsAlpha) {
+                processed += '*';
+            }
+            // Zahl gefolgt von Buchstabe (nicht am Ende einer Zahl, sondern Funktionsname)
+            else if (isdigit(c1) && c2IsAlpha && c2 != 'e') {
+                // z.B. "2sin(" -> "2*sin("
                 processed += '*';
             }
         }
     }
     s = processed;
-    
-    std::stack<double> values;
-    std::stack<char> ops;
 
-    for (int i = 0; i < s.length(); i++) {
-        if (s[i] == ' ') continue;
-
-        if (s[i] == 'x') {
-            values.push(x);
-        } else if (isdigit(s[i]) || (s[i] == '.')) {
-            String val = "";
-            while (i < s.length() && (isdigit(s[i]) || s[i] == '.')) {
-                val += s[i++];
-            }
-            values.push(val.toDouble());
-            i--;
-        } else if (s[i] == '(') {
-            ops.push('(');
-        } else if (s[i] == ')') {
-            while (!ops.empty() && ops.top() != '(') {
-                double val2 = values.top(); values.pop();
-                double val1 = values.top(); values.pop();
-                char op = ops.top(); ops.pop();
-                values.push(applyOp(val1, val2, op));
-            }
-            if (!ops.empty()) ops.pop();
-        } else {
-            if (s[i] == '-' && (i == 0 || s[i-1] == '(' || getPrecedence(s[i-1]) > 0)) {
-                values.push(0); 
-            }
-            while (!ops.empty() && getPrecedence(ops.top()) >= getPrecedence(s[i])) {
-                double val2 = values.top(); values.pop();
-                double val1 = values.top(); values.pop();
-                char op = ops.top(); ops.pop();
-                values.push(applyOp(val1, val2, op));
-            }
-            ops.push(s[i]);
-        }
-    }
-
-    while (!ops.empty()) {
-        double val2 = values.top(); values.pop();
-        double val1 = values.top(); values.pop();
-        char op = ops.top(); ops.pop();
-        values.push(applyOp(val1, val2, op));
-    }
-
-    return values.empty() ? NAN : values.top();
+    int pos = 0;
+    double result = evalExpr(s, pos, x);
+    return result;
 }
 
 void findRootsUniversal(const MathExpression& e, std::vector<Point>& roots, int startPct, int endPct, volatile int& progressRef, volatile bool& redrawRef) {
@@ -409,6 +519,15 @@ ExtremResult findExtremPunkte(const MathExpression& e,
     if (!e.valid) return res;
     res.defined = true;
 
+    {
+        GradKoeffResult poly = expandToPolynomial(e.rawStr);
+        if (poly.success && poly.grad < 2) {
+            progressRef = endPct;
+            redrawRef = true;
+            return res;
+        }
+    }
+
     const double step = 0.05;
     const double range = 200.0;
 
@@ -462,6 +581,15 @@ WendeResult findWendePunkte(const MathExpression& e,
     WendeResult res;
     if (!e.valid) return res;
     res.defined = true;
+
+    {
+        GradKoeffResult poly = expandToPolynomial(e.rawStr);
+        if (poly.success && poly.grad < 3) {
+            progressRef = endPct;
+            redrawRef = true;
+            return res;
+        }
+    }
 
     const double step  = 0.05;
     const double range = 200.0;

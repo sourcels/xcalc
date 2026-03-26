@@ -43,6 +43,19 @@ static int tabScrollY = 0;
 double panX = 0.0, panY = 0.0; 
 double scaleP = 15.0;
 
+static const char* funcPickerItems[] = {
+    "sin()", "cos()", "tan()", "ln()",
+    "arcsin()", "arccos()", "arctan()", "sqrt()",
+    "abs()", "log()", "sinh()", "cosh()",
+    "tanh()", "exp()", "1/", "x^2",
+    "x^3", "x^(-1)", "pi", "e"
+};
+static const int FUNC_PICKER_COUNT = 20;
+static const int FUNC_PICKER_COLS  = 4;
+static int funcPickerCursorIdx = 0;
+static int funcPickerScrollRow = 0;
+static UIState funcPickerReturnState = STATE_INPUT_F1;
+
 static M5Canvas sprite(&M5Cardputer.Display);
 
 static const uint16_t COLOR_BG     = TFT_BLACK;
@@ -126,7 +139,7 @@ void drawMenu() {
     sprite.drawString("W/S: Hoch/Runter | ENTER: Ausw.", 10, sprite.height() - 15);
 }
 
-void drawInput(const char* title, const char* prefix, String currentInput) {
+void drawInput(const char* title, const char* prefix, String currentInput, bool showFuncHint = false) {
     sprite.setTextColor(COLOR_GREEN, COLOR_BG);
     sprite.drawString(title, 10, 10);
     sprite.setTextColor(TFT_WHITE, COLOR_BG);
@@ -136,8 +149,12 @@ void drawInput(const char* title, const char* prefix, String currentInput) {
     sprite.setCursor(12, 45);
     sprite.print(prefix + currentInput + "_");
 
-    sprite.setTextColor(COLOR_YELLOW, COLOR_BG);
-    sprite.drawString("ENTER: OK | ESC: Abbruch", 10, sprite.height() - 15);
+    sprite.setTextColor(COLOR_GRAY, COLOR_BG);
+    if (showFuncHint) {
+        sprite.drawString("ENTER:OK  ESC:Abbruch  `:Funktionen", 10, sprite.height() - 15);
+    } else {
+        sprite.drawString("ENTER: OK | ESC: Abbruch", 10, sprite.height() - 15);
+    }
 }
 
 void drawResultsAchsen() {
@@ -398,12 +415,6 @@ void drawResultsSymmetrie() {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
-        if (!exprValid) {
-            sprite.setTextColor(COLOR_GRAY);
-            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
-            curY += 6;
-            return;
-        }
         if (!res.defined) {
             sprite.setTextColor(COLOR_RED);
             sprite.drawString("Fehler!", 20, curY); curY += 12;
@@ -446,8 +457,8 @@ void drawResultsSymmetrie() {
     if (sameFunc_sym) {
         drawSymBlock("f(x) = g(x) Symmetrie:", symF1, true);
     } else {
-        drawSymBlock("f(x) Symmetrie:", symF1, expr1.valid);
-        drawSymBlock("g(x) Symmetrie:", symF2, expr2.valid);
+        if (expr1.valid) drawSymBlock("f(x) Symmetrie:", symF1, expr1.valid);
+        if (expr2.valid) drawSymBlock("g(x) Symmetrie:", symF2, expr2.valid);
     }
 
     if (!expr1.valid && !expr2.valid) {
@@ -488,11 +499,6 @@ void drawResultsExtrem() {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
-        if (!exprValid) {
-            sprite.setTextColor(COLOR_GRAY);
-            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
-            curY += 6; return;
-        }
         if (!res.defined) {
             sprite.setTextColor(COLOR_RED);
             sprite.drawString("Fehler!", 20, curY); curY += 12;
@@ -534,8 +540,8 @@ void drawResultsExtrem() {
     if (sameFunc_ex) {
         drawExtBlock("f(x) = g(x) Extrempunkte:", extremF1, true);
     } else {
-        drawExtBlock("f(x) Extrempunkte:", extremF1, expr1.valid);
-        drawExtBlock("g(x) Extrempunkte:", extremF2, expr2.valid);
+        if (expr1.valid) drawExtBlock("f(x) Extrempunkte:", extremF1, expr1.valid);
+        if (expr2.valid) drawExtBlock("g(x) Extrempunkte:", extremF2, expr2.valid);
     }
 
     sprite.clearClipRect();
@@ -570,11 +576,6 @@ void drawResultsWendepunkte() {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
-        if (!exprValid) {
-            sprite.setTextColor(COLOR_GRAY);
-            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
-            curY += 6; return;
-        }
         if (!res.defined) {
             sprite.setTextColor(COLOR_RED);
             sprite.drawString("Fehler!", 20, curY); curY += 12;
@@ -595,9 +596,9 @@ void drawResultsWendepunkte() {
 
             sprite.setTextColor(TFT_WHITE);
             if (wp.concaveToConvex) {
-                sprite.drawString(" kk->kx (links-/rechts)", 20, curY);
+                sprite.drawString(" Linkskurve -> Rechtskurve", 20, curY);
             } else {
-                sprite.drawString(" kx->kk (rechts-/links)", 20, curY);
+                sprite.drawString(" Rechtskurve -> Linkskurve", 20, curY);
             }
             curY += 12;
         }
@@ -610,8 +611,8 @@ void drawResultsWendepunkte() {
     if (sameFunc_wp) {
         drawWendeBlock("f(x) = g(x) Wendepunkte:", wendeF1, true);
     } else {
-        drawWendeBlock("f(x) Wendepunkte:", wendeF1, expr1.valid);
-        drawWendeBlock("g(x) Wendepunkte:", wendeF2, expr2.valid);
+        if (expr1.valid) drawWendeBlock("f(x) Wendepunkte:", wendeF1, expr1.valid);
+        if (expr2.valid)drawWendeBlock("g(x) Wendepunkte:", wendeF2, expr2.valid);
     }
 
     sprite.clearClipRect();
@@ -652,11 +653,6 @@ void drawResultsKruemmung() {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
-        if (!exprValid) {
-            sprite.setTextColor(COLOR_GRAY);
-            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
-            curY += 6; return;
-        }
         if (!res.defined || res.intervals.empty()) {
             sprite.setTextColor(COLOR_GRAY);
             sprite.drawString("Keine Daten!", 20, curY); curY += 12;
@@ -686,8 +682,8 @@ void drawResultsKruemmung() {
     if (sameFunc_kr) {
         drawKrBlock("f(x) = g(x) Kruemmung:", kruemmungF1, true);
     } else {
-        drawKrBlock("f(x) Kruemmung:", kruemmungF1, expr1.valid);
-        drawKrBlock("g(x) Kruemmung:", kruemmungF2, expr2.valid);
+        if (expr1.valid) drawKrBlock("f(x) Kruemmung:", kruemmungF1, expr1.valid);
+        if (expr2.valid)drawKrBlock("g(x) Kruemmung:", kruemmungF2, expr2.valid);
     }
 
     sprite.clearClipRect();
@@ -723,11 +719,6 @@ void drawResultsMonotonie() {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
-        if (!exprValid) {
-            sprite.setTextColor(COLOR_GRAY);
-            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
-            curY += 6; return;
-        }
         if (!res.defined || res.intervals.empty()) {
             sprite.setTextColor(COLOR_GRAY);
             sprite.drawString("Keine Daten!", 20, curY); curY += 12;
@@ -779,8 +770,8 @@ void drawResultsMonotonie() {
     if (sameFunc_mo) {
         drawMonBlock("f(x) = g(x) Monotonie:", monotF1, extremF1, true);
     } else {
-        drawMonBlock("f(x) Monotonie:", monotF1, extremF1, expr1.valid);
-        drawMonBlock("g(x) Monotonie:", monotF2, extremF2, expr2.valid);
+        if (expr1.valid) drawMonBlock("f(x) Monotonie:", monotF1, extremF1, expr1.valid);
+        if (expr2.valid) drawMonBlock("g(x) Monotonie:", monotF2, extremF2, expr2.valid);
     }
 
     sprite.clearClipRect();
@@ -826,11 +817,6 @@ void drawResultsUnendlich() {
         sprite.setTextColor(COLOR_YELLOW);
         sprite.drawString(label, 10, curY); curY += 14;
 
-        if (!exprValid) {
-            sprite.setTextColor(COLOR_GRAY);
-            sprite.drawString("(nicht definiert)", 20, curY); curY += 12;
-            curY += 8; return;
-        }
         if (!res.defined) {
             sprite.setTextColor(COLOR_RED);
             sprite.drawString("Fehler!", 20, curY); curY += 12;
@@ -868,8 +854,8 @@ void drawResultsUnendlich() {
     if (sameFunc_inf) {
         drawInfBlock("f(x) = g(x) Verhalten:", "f(x)", infF1, true);
     } else {
-        drawInfBlock("f(x) Verhalten:", "f(x)", infF1, expr1.valid);
-        drawInfBlock("g(x) Verhalten:", "g(x)", infF2, expr2.valid);
+        if (expr1.valid) drawInfBlock("f(x) Verhalten:", "f(x)", infF1, expr1.valid);
+        if (expr2.valid) drawInfBlock("g(x) Verhalten:", "g(x)", infF2, expr2.valid);
     }
 
     sprite.clearClipRect();
@@ -1048,16 +1034,75 @@ void drawPlot() {
     sprite.setTextColor(0x8410);
     sprite.setTextDatum(TL_DATUM);
     sprite.setTextSize(1);
-    sprite.drawString("WASD:Pan QE:Zoom ESC:Menu", 4, 2);
+    sprite.drawString("WASD:Bewegen Q/E:Zoom ESC:Menu", 4, 2);
     sprite.drawFastHLine(0, 13, w, COLOR_BORDER);
+}
+
+void drawFuncPicker() {
+    sprite.fillSprite(COLOR_BG);
+
+    sprite.fillRect(0, 0, sprite.width(), 18, COLOR_BG);
+    sprite.drawRect(3, 1, sprite.width() - 6, 16, COLOR_BORDER);
+    sprite.fillRect(4, 2, sprite.width() - 8, 14, 0x2104);
+    sprite.setTextDatum(MC_DATUM);
+    sprite.setTextColor(COLOR_GREEN);
+    sprite.drawString("Funktion einfuegen", sprite.width() / 2, 9);
+    sprite.setTextDatum(TL_DATUM);
+
+    const int TILE_W    = 55;
+    const int TILE_H    = 18;
+    const int TILE_PAD  = 2;
+    const int START_Y   = 22;
+    const int ROWS_VIS  = 5;
+
+    int totalRows = (FUNC_PICKER_COUNT + FUNC_PICKER_COLS - 1) / FUNC_PICKER_COLS;
+
+    for (int row = 0; row < ROWS_VIS; row++) {
+        int absRow = row + funcPickerScrollRow;
+        if (absRow >= totalRows) break;
+
+        for (int col = 0; col < FUNC_PICKER_COLS; col++) {
+            int idx = absRow * FUNC_PICKER_COLS + col;
+            if (idx >= FUNC_PICKER_COUNT) break;
+
+            int tx = TILE_PAD + col * (TILE_W + TILE_PAD);
+            int ty = START_Y  + row * (TILE_H + TILE_PAD);
+
+            bool selected = (idx == funcPickerCursorIdx);
+
+            if (selected) {
+                sprite.fillRect(tx, ty, TILE_W, TILE_H, TFT_WHITE);
+                sprite.setTextColor(TFT_BLACK);
+            } else {
+                sprite.fillRect(tx, ty, TILE_W, TILE_H, 0x2945);
+                sprite.drawRect(tx, ty, TILE_W, TILE_H, COLOR_BORDER);
+                sprite.setTextColor(COLOR_CYAN);
+            }
+            sprite.setTextDatum(MC_DATUM);
+            sprite.drawString(funcPickerItems[idx], tx + TILE_W / 2, ty + TILE_H / 2);
+        }
+    }
+
+    if (totalRows > ROWS_VIS) {
+        int barH = sprite.height() - START_Y - 20;
+        int thumbH = std::max(6, barH * ROWS_VIS / totalRows);
+        int thumbY = START_Y + (barH - thumbH) * funcPickerScrollRow / std::max(1, totalRows - ROWS_VIS);
+        sprite.fillRect(sprite.width() - 4, START_Y, 3, barH, 0x2104);
+        sprite.fillRect(sprite.width() - 4, thumbY, 3, thumbH, COLOR_GRAY);
+    }
+
+    sprite.fillRect(0, sprite.height() - 16, sprite.width(), 16, COLOR_BG);
+    sprite.setTextColor(COLOR_GRAY);
+    sprite.setTextDatum(TL_DATUM);
+    sprite.drawString("Pfeile:Bewegen ENTER:Einfuegen ESC:Zurueck", 4, sprite.height() - 13);
 }
 
 void draw() {
     sprite.fillSprite(COLOR_BG);
 
     if      (currentState == STATE_MENU)                  drawMenu();
-    else if (currentState == STATE_INPUT_F1)              drawInput("f(x) definieren", "f(x) = ", funcTemp);
-    else if (currentState == STATE_INPUT_F2)              drawInput("g(x) definieren", "g(x) = ", funcTemp);
+    else if (currentState == STATE_INPUT_F1)              drawInput("f(x) definieren", "f(x) = ", funcTemp, true);
+    else if (currentState == STATE_INPUT_F2)              drawInput("g(x) definieren", "g(x) = ", funcTemp, true);
     else if (currentState == STATE_RESULTS_ACHSEN)        drawResultsAchsen();
     else if (currentState == STATE_INPUT_PUNKTPROBE)      drawPunktProbe();
     else if (currentState == STATE_RESULTS_GRADKOEFF)     drawResultsGradKoeff();
@@ -1067,11 +1112,12 @@ void draw() {
     else if (currentState == STATE_RESULTS_KRUEMMUNG)     drawResultsKruemmung();
     else if (currentState == STATE_RESULTS_MONOTONIE)     drawResultsMonotonie();
     else if (currentState == STATE_RESULTS_UNENDLICH)     drawResultsUnendlich();
-    else if (currentState == STATE_INPUT_TAB_START)       drawInput("Tabelle Start", "Start = ", funcTemp);
-    else if (currentState == STATE_INPUT_TAB_END)         drawInput("Tabelle End", "End = ", funcTemp);
-    else if (currentState == STATE_INPUT_TAB_STEP)        drawInput("Tabelle Step", "Step = ", funcTemp);
+    else if (currentState == STATE_INPUT_TAB_START)       drawInput("Tabelle: Startwert", "Start = ", funcTemp);
+    else if (currentState == STATE_INPUT_TAB_END)         drawInput("Tabelle: Endwert", "Ende = ", funcTemp);
+    else if (currentState == STATE_INPUT_TAB_STEP)        drawInput("Tabelle: Schrittweite", "Schritt = ", funcTemp);
     else if (currentState == STATE_RESULTS_TABELLE)       drawResultsTabelle();
     else if (currentState == STATE_PLOT)                  drawPlot();
+    else if (currentState == STATE_FUNC_PICKER)           drawFuncPicker();
 
     if (showBusyOverlay) {
         int bw = 160, bh = 50;
@@ -1167,7 +1213,16 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
         }
     }
     else if (currentState == STATE_INPUT_F1 || currentState == STATE_INPUT_F2) {
-        if (ks.enter) {
+        if (ch == '`') {
+            currentState = STATE_MENU;
+            needRedraw = true;
+        } else if (ks.fn) {
+            funcPickerReturnState = currentState;
+            funcPickerCursorIdx = 0;
+            funcPickerScrollRow = 0;
+            currentState = STATE_FUNC_PICKER;
+            needRedraw = true;
+        } else if (ks.enter) {
             if (currentState == STATE_INPUT_F1) {
                 expr1.rawStr = funcTemp;
                 currentMathCmd = CMD_VALIDATE_F1;
@@ -1180,12 +1235,65 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
             needRedraw = true;
         } else if (ks.del) {
             if (funcTemp.length() > 0) { funcTemp.remove(funcTemp.length() - 1); needRedraw = true; }
-        } else if (ch == '\t') {
+        } else if (ks.tab) {
             funcTemp += "^"; needRedraw = true;
-        } else if (ch == 27 || ch == '`') {
+        } else if (ch == 27) {
             currentState = STATE_MENU; needRedraw = true;
-        } else if (!isSpecial && ch >= 32 && ch <= 126) {
+        } else if (!isSpecial && ch >= 32 && ch <= 126 && ch != '`') {
             funcTemp += ch; needRedraw = true;
+        }
+    }
+    else if (currentState == STATE_FUNC_PICKER) {
+        const int ROWS_VIS  = 5;
+        int totalRows = (FUNC_PICKER_COUNT + FUNC_PICKER_COLS - 1) / FUNC_PICKER_COLS;
+
+        if (ch == 'a' || ch == ',') {
+            if (funcPickerCursorIdx % FUNC_PICKER_COLS > 0) {
+                funcPickerCursorIdx--;
+                needRedraw = true;
+            }
+        } else if (ch == 'd' || ch == '/') {
+            if (funcPickerCursorIdx % FUNC_PICKER_COLS < FUNC_PICKER_COLS - 1
+                && funcPickerCursorIdx + 1 < FUNC_PICKER_COUNT) {
+                funcPickerCursorIdx++;
+                needRedraw = true;
+            }
+        } else if (ch == 'w' || ch == ';') {
+            if (funcPickerCursorIdx >= FUNC_PICKER_COLS) {
+                funcPickerCursorIdx -= FUNC_PICKER_COLS;
+                int curRow = funcPickerCursorIdx / FUNC_PICKER_COLS;
+                if (curRow < funcPickerScrollRow) funcPickerScrollRow = curRow;
+                needRedraw = true;
+            }
+        } else if (ch == 's' || ch == '.') {
+            if (funcPickerCursorIdx + FUNC_PICKER_COLS < FUNC_PICKER_COUNT) {
+                funcPickerCursorIdx += FUNC_PICKER_COLS;
+                int curRow = funcPickerCursorIdx / FUNC_PICKER_COLS;
+                if (curRow >= funcPickerScrollRow + ROWS_VIS)
+                    funcPickerScrollRow = curRow - ROWS_VIS + 1;
+                needRedraw = true;
+            }
+        } else if (ks.enter) {
+            String ins = String(funcPickerItems[funcPickerCursorIdx]);
+            if (ins == "pi") {
+                funcTemp += "3.14159265";
+            } else if (ins == "e") {
+                funcTemp += "2.71828182";
+            } else if (ins == "1/") {
+                funcTemp += "1/(";
+            } else {
+                int paren = ins.indexOf("()");
+                if (paren != -1) {
+                    funcTemp += ins.substring(0, paren + 1);
+                } else {
+                    funcTemp += ins;
+                }
+            }
+            currentState = funcPickerReturnState;
+            needRedraw = true;
+        } else if (ch == 27 || ch == '`' || ks.del) {
+            currentState = funcPickerReturnState;
+            needRedraw = true;
         }
     }
     else if (currentState == STATE_INPUT_TAB_START || currentState == STATE_INPUT_TAB_END || currentState == STATE_INPUT_TAB_STEP) {
@@ -1211,7 +1319,7 @@ void handleInput(char ch, Keyboard_Class::KeysState ks, bool isSpecial) {
             if (funcTemp.length() > 0) { funcTemp.remove(funcTemp.length() - 1); needRedraw = true; }
         } else if (ch == 27 || ch == '`') {
             currentState = STATE_MENU; needRedraw = true;
-        } else if (!isSpecial && ((ch >= '0' && ch <= '9') || ch == '.' || ch == '-')) {
+        } else if (!isSpecial && ((ch >= 48 && ch <= 57) || ch == 46 || ch == 45)) {
             funcTemp += ch; needRedraw = true;
         }
     }
@@ -1315,6 +1423,8 @@ void Task_TFT(void *pvParameters) {
                 handleInput('\b', ks, true);
             } else if (ks.tab) {
                 handleInput('\t', ks, true);
+            } else if (ks.fn) {
+                handleInput('\f', ks, true);
             } else {
                 for (auto ch : ks.word) {
                     handleInput(ch, ks, false);
