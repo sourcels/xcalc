@@ -49,7 +49,7 @@ Clone the repo:
 
 2. Bash
 ```
-git clone https://github.com/yourusername/xcalc.git
+git clone https://github.com/sourcels/xcalc.git
 ```
 Open in **PlatformIO**:
 Launch VS Code and open the xcalc folder.
