@@ -14,7 +14,7 @@ xcalc is a sophisticated mathematical analysis tool built specifically for the M
 ## ⌨️ Controls
 
 <p align="center">
-  <img src="guide.jpg" alt="xcalc guide" width="500"/>
+  <img src="guide.jpg" alt="xcalc guide" width="756"/>
 </p>
 
 
