@@ -13,7 +13,9 @@ xcalc is a sophisticated mathematical analysis tool built specifically for the M
 
 ## ⌨️ Controls
 
-<img width="1280" height="782" alt="photo_2026-03-27_00-12-33" src="https://github.com/user-attachments/assets/5cb4d4e8-3761-44fa-a6db-07f83997bb20" />
+<p align="center">
+  <img src="guide.jpg" alt="xcalc guide" width="500"/>
+</p>
 
 
 ## 🛠 Features (The 13-Function Suite)
