@@ -9,7 +9,7 @@ xcalc is a sophisticated mathematical analysis tool built specifically for the M
 > WARNING: GERMAN LOCALIZATION
 > Localized for Germany: While the documentation is in English, the device interface uses standard German mathematical terminology (Kurvendiskussion style).
 
-## Usage (guide)
+## ⌨️ Controls
 
 <img width="1280" height="782" alt="photo_2026-03-27_00-12-33" src="https://github.com/user-attachments/assets/5cb4d4e8-3761-44fa-a6db-07f83997bb20" />
 
@@ -57,11 +57,6 @@ Launch VS Code and open the xcalc folder.
 4. Upload:
 Connect your Cardputer Adv and hit the PlatformIO: Upload button (the arrow icon in the status bar).
 
-## ⌨️ Controls
-- Arrows / Enter: Navigate the German menu.
-- Physical Keys: Type functions using standard notation (e.g., x^2 - 2*x + 1).
-- Esc / Backspace: Go back or delete characters.
-- Tab: Insert '^' for "Exponent"
 
 ## ⚖️ License
 Distributed under the Apache License 2.0. See LICENSE for more information.
