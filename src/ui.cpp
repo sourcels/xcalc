@@ -612,7 +612,7 @@ void drawResultsWendepunkte() {
         drawWendeBlock("f(x) = g(x) Wendepunkte:", wendeF1, true);
     } else {
         if (expr1.valid) drawWendeBlock("f(x) Wendepunkte:", wendeF1, expr1.valid);
-        if (expr2.valid)drawWendeBlock("g(x) Wendepunkte:", wendeF2, expr2.valid);
+        if (expr2.valid) drawWendeBlock("g(x) Wendepunkte:", wendeF2, expr2.valid);
     }
 
     sprite.clearClipRect();

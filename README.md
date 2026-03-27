@@ -2,6 +2,10 @@
 
 The Ultimate Pocket Math Engine for **M5Cardputer Adv**
 
+<p align="center">
+  <img src="cover.jpg" alt="xcalc for M5Stack Cardputer" width="400"/>
+</p>
+
 xcalc is a sophisticated mathematical analysis tool built specifically for the M5Stack Cardputer Adv. Designed with the German school and university curriculum in mind, it transforms your portable ESP32 device into a high-performance computer algebra system (CAS) capable of everything from basic plotting to advanced calculus.
 
 > WARNING: GERMAN LOCALIZATION
