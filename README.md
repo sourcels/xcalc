@@ -2,14 +2,23 @@
 
 The Ultimate Pocket Math Engine for **M5Cardputer Adv**
 
+<<<<<<< HEAD
 <p align="center">
   <img src="cover.jpg" alt="xcalc for M5Stack Cardputer" width="400"/>
 </p>
+=======
+![photo_2026-03-25_00-54-26](https://github.com/user-attachments/assets/7548fa9d-6ec6-4d7c-b733-78329ab71ec4)
+>>>>>>> a7ff7a761c601fd1b947c55e7cf8013704c62ac7
 
 xcalc is a sophisticated mathematical analysis tool built specifically for the M5Stack Cardputer Adv. Designed with the German school and university curriculum in mind, it transforms your portable ESP32 device into a high-performance computer algebra system (CAS) capable of everything from basic plotting to advanced calculus.
 
 > WARNING: GERMAN LOCALIZATION
 > Localized for Germany: While the documentation is in English, the device interface uses standard German mathematical terminology (Kurvendiskussion style).
+
+## ⌨️ Controls
+
+<img width="1280" height="782" alt="photo_2026-03-27_00-12-33" src="https://github.com/user-attachments/assets/5cb4d4e8-3761-44fa-a6db-07f83997bb20" />
+
 
 ## 🛠 Features (The 13-Function Suite)
 
@@ -46,7 +55,7 @@ Clone the repo:
 
 2. Bash
 ```
-git clone https://github.com/yourusername/xcalc.git
+git clone https://github.com/sourcels/xcalc.git
 ```
 Open in **PlatformIO**:
 Launch VS Code and open the xcalc folder.
@@ -54,11 +63,6 @@ Launch VS Code and open the xcalc folder.
 4. Upload:
 Connect your Cardputer Adv and hit the PlatformIO: Upload button (the arrow icon in the status bar).
 
-## ⌨️ Controls
-- Arrows / Enter: Navigate the German menu.
-- Physical Keys: Type functions using standard notation (e.g., x^2 - 2*x + 1).
-- Esc / Backspace: Go back or delete characters.
-- Tab: Insert '^' for "Exponent"
 
 ## ⚖️ License
 Distributed under the Apache License 2.0. See LICENSE for more information.
